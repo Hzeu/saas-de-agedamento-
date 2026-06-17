@@ -44,7 +44,7 @@ export function PublicBookingForm({ slug, initialDay, initial }: Props) {
   const minDay = useMemo(() => new Date().toISOString().slice(0, 10), [])
   const [day, setDay] = useState(initialDay)
   const [data, setData] = useState<AvailabilityResult>(initialData)
-  const [service, setService] = useState(initialData.profile.services[0] ?? '')
+  const [serviceId, setServiceId] = useState(initialData.profile.services[0]?.id ?? '')
   const [slotIso, setSlotIso] = useState(initialData.slots[0] ?? '')
   const [pending, startTransition] = useTransition()
   const [state, formAction, isSubmitting] = useActionState(createPublicBooking, {})
@@ -52,7 +52,7 @@ export function PublicBookingForm({ slug, initialDay, initial }: Props) {
 
   useEffect(() => {
     setData(initialData)
-    setService(initialData.profile.services[0] ?? '')
+    setServiceId(initialData.profile.services[0]?.id ?? '')
     setSlotIso(initialData.slots[0] ?? '')
   }, [initialData])
 
@@ -74,7 +74,7 @@ export function PublicBookingForm({ slug, initialDay, initial }: Props) {
       }
       const nextData = normalizeAvailability(res.data)
       setData(nextData)
-      setService(nextData.profile.services[0] ?? '')
+      setServiceId(nextData.profile.services[0]?.id ?? '')
       setSlotIso(nextData.slots[0] ?? '')
     })
   }, [slug, day, initialDay])
@@ -91,7 +91,7 @@ export function PublicBookingForm({ slug, initialDay, initial }: Props) {
 
       <form action={formAction} className="space-y-5 rounded-2xl border bg-card p-6 shadow-sm">
         <input type="hidden" name="slug" value={slug} />
-        <input type="hidden" name="service" value={service} />
+        <input type="hidden" name="serviceId" value={serviceId} />
         <input type="hidden" name="slotIso" value={slotIso} />
 
         <div className="space-y-2">
@@ -104,18 +104,25 @@ export function PublicBookingForm({ slug, initialDay, initial }: Props) {
 
         <div className="space-y-2">
           <Label>Serviço</Label>
-          <Select value={service} onValueChange={setService} disabled={!data.profile.services.length}>
-            <SelectTrigger className={cn(!service && 'text-muted-foreground')}>
-              <SelectValue placeholder="Escolha um serviço" />
-            </SelectTrigger>
-            <SelectContent>
-              {data.profile.services.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {!data.profile.services.length ? (
+            <p className="rounded-lg border border-dashed border-border bg-muted/30 px-3 py-3 text-sm text-muted-foreground">
+              Este profissional ainda não cadastrou serviços disponíveis para agendamento online.
+              Entre em contato diretamente para mais informações.
+            </p>
+          ) : (
+            <Select value={serviceId} onValueChange={setServiceId}>
+              <SelectTrigger className={cn(!serviceId && 'text-muted-foreground')}>
+                <SelectValue placeholder="Escolha um serviço" />
+              </SelectTrigger>
+              <SelectContent>
+                {data.profile.services.map((service) => (
+                  <SelectItem key={service.id} value={service.id}>
+                    {service.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -147,7 +154,11 @@ export function PublicBookingForm({ slug, initialDay, initial }: Props) {
           <Input id="clientPhone" name="clientPhone" required placeholder="(00) 00000-0000" />
         </div>
 
-        <Button type="submit" className="w-full" disabled={isSubmitting || pending || !slotIso}>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={isSubmitting || pending || !slotIso || !serviceId || !data.profile.services.length}
+        >
           {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
           Confirmar agendamento
         </Button>

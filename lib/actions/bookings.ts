@@ -9,8 +9,16 @@ import type { BookingStatus } from '@/lib/types/database'
 
 export type PublicBookingState = { error?: string; success?: boolean }
 
+export type PublicServiceOption = {
+  id: string
+  name: string
+  label: string
+  price: number | null
+  duration_minutes: number | null
+}
+
 export type AvailabilityResult = {
-  profile: { id: string; full_name: string; slug: string; services: string[] }
+  profile: { id: string; full_name: string; slug: string; services: PublicServiceOption[] }
   slots: string[]
 }
 
@@ -32,20 +40,37 @@ function serviceLabel(service: PublicServiceRow): string {
   return `${service.name}${duration}${price}`
 }
 
-async function getPublicServiceLabels(
+async function loadPublicServices(
   supabase: Awaited<ReturnType<typeof createClient>>,
   professionalId: string,
-  fallbackCatalog: unknown,
-): Promise<string[]> {
-  const { data } = await supabase.rpc('get_booking_services', { p_id: professionalId })
+): Promise<{ services: PublicServiceOption[]; error?: string }> {
+  const { data, error } = await supabase.rpc('get_booking_services', { p_id: professionalId })
 
-  if (Array.isArray(data) && data.length > 0) {
-    return (data as PublicServiceRow[]).map(serviceLabel)
+  if (error) {
+    console.error('[bookings] get_booking_services failed', {
+      professionalId,
+      message: error.message,
+      code: error.code,
+    })
+    return {
+      services: [],
+      error: 'Não foi possível carregar os serviços deste profissional.',
+    }
   }
 
-  return Array.isArray(fallbackCatalog)
-    ? (fallbackCatalog as unknown[]).map((x) => String(x)).filter(Boolean)
-    : ['Consulta']
+  if (!Array.isArray(data) || data.length === 0) {
+    return { services: [] }
+  }
+
+  return {
+    services: (data as PublicServiceRow[]).map((row) => ({
+      id: row.id,
+      name: row.name,
+      label: serviceLabel(row),
+      price: row.price,
+      duration_minutes: row.duration_minutes,
+    })),
+  }
 }
 
 export async function loadPublicAvailability(
@@ -63,10 +88,12 @@ export async function loadPublicAvailability(
     id: string
     full_name: string
     slug: string
-    service_catalog: unknown
   }
 
-  const services = await getPublicServiceLabels(supabase, prof.id, prof.service_catalog)
+  const { services, error: servicesError } = await loadPublicServices(supabase, prof.id)
+  if (servicesError) {
+    return { error: servicesError }
+  }
 
   const { data: wh } = await supabase.rpc('get_working_hours_for_professional', { p_id: prof.id })
   const { data: occ } = await supabase.rpc('get_booking_occupied_times', {
@@ -93,61 +120,36 @@ export async function createPublicBooking(
   _prev: PublicBookingState | undefined,
   formData: FormData,
 ): Promise<PublicBookingState> {
-  const supabase = await createClient()
-
   const slug = (formData.get('slug') as string)?.trim()
-  const service = (formData.get('service') as string)?.trim()
+  const serviceId = (formData.get('serviceId') as string)?.trim()
   const clientName = (formData.get('clientName') as string)?.trim()
   const clientPhone = (formData.get('clientPhone') as string)?.trim()
   const slotIso = (formData.get('slotIso') as string)?.trim()
 
-  if (!slug || !service || !clientName || !clientPhone || !slotIso) {
+  if (!slug || !serviceId || !clientName || !clientPhone || !slotIso) {
     return { error: 'Preencha todos os campos.' }
   }
 
-  const { data: profRows, error: pe } = await supabase.rpc('get_booking_profile', { p_slug: slug })
-  if (pe || !profRows?.length) {
-    return { error: 'Profissional não encontrado.' }
+  const slotDate = new Date(slotIso)
+  if (Number.isNaN(slotDate.getTime())) {
+    return { error: 'Horário inválido.' }
   }
-  const prof = profRows[0] as { id: string; service_catalog?: unknown }
-  const services = await getPublicServiceLabels(supabase, prof.id, prof.service_catalog)
-
-  if (!services.includes(service)) {
-    return { error: 'Serviço inválido para este profissional.' }
-  }
-
-  const status = 'pending' satisfies BookingStatus
-
-  console.log('BOOKING INSERT', {
-    professional_id: prof?.id,
-    slug,
-    service,
-    clientName,
-    clientPhone,
-    slotIso,
-    status,
-  })
 
   const { url, anonKey } = assertSupabaseEnv()
-  const publicSupabase = createSupabaseClient(
-    url,
-    anonKey,
-    {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-      },
+  const publicSupabase = createSupabaseClient(url, anonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
     },
-  )
+  })
 
-  const { error } = await publicSupabase.from('bookings').insert({
-    professional_id: prof.id,
-    client_name: clientName,
-    client_phone: clientPhone,
-    service,
-    date: slotIso,
-    status,
+  const { error } = await publicSupabase.rpc('create_public_booking', {
+    p_slug: slug,
+    p_service_id: serviceId,
+    p_client_name: clientName,
+    p_client_phone: clientPhone,
+    p_slot: slotDate.toISOString(),
   })
 
   if (error) {
