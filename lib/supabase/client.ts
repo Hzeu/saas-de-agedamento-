@@ -1,8 +1,19 @@
 import { createBrowserClient } from '@supabase/ssr'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { assertSupabaseEnv, getSupabaseEnv } from '@/lib/supabase/env'
+
+let browserClient: SupabaseClient | null = null
+
+export function isSupabaseConfigured() {
+  return getSupabaseEnv().isConfigured
+}
 
 export function createClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
+  if (browserClient) {
+    return browserClient
+  }
+
+  const { url, anonKey } = assertSupabaseEnv()
+  browserClient = createBrowserClient(url, anonKey)
+  return browserClient
 }

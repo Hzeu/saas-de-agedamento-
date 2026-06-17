@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import { getSupabaseEnv } from '@/lib/supabase/env'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
   destinationForRole,
@@ -16,12 +17,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth/error', origin))
   }
 
+  const { url, anonKey, isConfigured } = getSupabaseEnv()
+  if (!isConfigured) {
+    return NextResponse.redirect(new URL('/auth/login?config=supabase', origin))
+  }
+
   const redirectUrl = new URL('/auth/login', origin)
   const response = NextResponse.redirect(redirectUrl)
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    anonKey,
     {
       cookies: {
         getAll() {

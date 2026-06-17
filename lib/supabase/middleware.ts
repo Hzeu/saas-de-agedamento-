@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { isSubscriptionAccessBlocked } from '@/lib/billing/subscription-gate'
+import { getSupabaseEnv } from '@/lib/supabase/env'
 
 const PROTECTED_PREFIXES = [
   '/dashboard',
@@ -17,9 +18,24 @@ function isProtectedPath(pathname: string) {
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
+  const { url, anonKey, isConfigured } = getSupabaseEnv()
+  const path = request.nextUrl.pathname
+
+  if (!isConfigured) {
+    if (isProtectedPath(path)) {
+      const redirectUrl = request.nextUrl.clone()
+      redirectUrl.pathname = '/auth/login'
+      redirectUrl.searchParams.set('redirect', path)
+      redirectUrl.searchParams.set('config', 'supabase')
+      return NextResponse.redirect(redirectUrl)
+    }
+
+    return supabaseResponse
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    anonKey,
     {
       cookies: {
         getAll() {
@@ -39,8 +55,6 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-
-  const path = request.nextUrl.pathname
 
   if (isProtectedPath(path) && !user) {
     const url = request.nextUrl.clone()

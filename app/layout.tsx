@@ -5,6 +5,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Toaster } from 'sonner'
 import { ThemeProvider } from '@/components/providers/theme-provider'
 import { AuthProvider } from '@/components/providers/auth-provider'
+import { SupabaseConfigAlert } from '@/components/providers/supabase-config-alert'
 import { cn } from '@/lib/utils'
 import { parseThemePreference, resolveForServer } from '@/lib/theme/preference'
 import './globals.css'
@@ -123,6 +124,7 @@ export default async function RootLayout({
           serverPrefersDark={secCh === 'dark'}
         >
           <AuthProvider>
+            <SupabaseConfigAlert />
             {children}
             <Toaster 
               position="top-right"

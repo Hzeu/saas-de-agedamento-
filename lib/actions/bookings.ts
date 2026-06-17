@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import { assertSupabaseEnv } from '@/lib/supabase/env'
 import { buildHourlySlots, type WorkingHourRow } from '@/lib/booking/slots'
 import type { BookingStatus } from '@/lib/types/database'
 
@@ -127,9 +128,10 @@ export async function createPublicBooking(
     status,
   })
 
+  const { url, anonKey } = assertSupabaseEnv()
   const publicSupabase = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    anonKey,
     {
       auth: {
         persistSession: false,

@@ -14,6 +14,7 @@ function LoginForm() {
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
   const redirectPath = searchParams.get('redirect') ?? ''
+  const missingConfig = searchParams.get('config') === 'supabase'
 
   const [state, formAction, isPending] = useActionState(
     async (_prev: AuthActionResult | undefined, formData: FormData) => signIn(_prev, formData),
@@ -48,6 +49,12 @@ function LoginForm() {
           <div className="mb-8">
             <h1 className="text-2xl font-bold tracking-tight">Bem-vindo de volta</h1>
             <p className="mt-2 text-muted-foreground">Entre na sua conta para continuar</p>
+            {missingConfig ? (
+              <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100">
+                O Supabase ainda não está configurado neste ambiente. Defina as variáveis de ambiente
+                antes de acessar áreas protegidas.
+              </p>
+            ) : null}
           </div>
 
           <form action={formAction} className="space-y-6">

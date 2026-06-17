@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getSupabaseConfigMessage } from '@/lib/supabase/env'
 import {
   destinationForRole,
   isRedirectAllowedForRole,
@@ -21,6 +22,11 @@ export async function signUp(
   _prev: AuthActionResult | undefined,
   formData: FormData,
 ): Promise<AuthActionResult | undefined> {
+  const configError = getSupabaseConfigMessage()
+  if (configError) {
+    return { error: configError }
+  }
+
   const supabase = await createClient()
 
   const email = formData.get('email') as string
@@ -68,6 +74,11 @@ export async function signIn(
   _prev: AuthActionResult | undefined,
   formData: FormData,
 ): Promise<AuthActionResult | undefined> {
+  const configError = getSupabaseConfigMessage()
+  if (configError) {
+    return { error: configError }
+  }
+
   const supabase = await createClient()
 
   const email = formData.get('email') as string
