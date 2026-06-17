@@ -1,6 +1,6 @@
 // Application constants
 
-export const APP_NAME = 'BeautyBook'
+export const APP_NAME = 'HYDRA'
 export const APP_DESCRIPTION = 'Sistema de agendamento online para profissionais de beleza'
 
 /** Rotas internas que não devem ser tratadas como slug público de profissional */

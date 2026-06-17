@@ -19,6 +19,7 @@ import {
   LogOut,
 } from 'lucide-react'
 import { useState } from 'react'
+import { APP_NAME } from '@/lib/constants'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -78,7 +79,7 @@ export function DashboardSidebar() {
                 <div className="flex size-8 items-center justify-center rounded-lg bg-sidebar-primary">
                   <Sparkles className="size-4 text-sidebar-primary-foreground" />
                 </div>
-                <span className="font-bold">BeautyBook</span>
+                <span className="font-bold">{APP_NAME}</span>
               </Link>
             )}
             {isCollapsed && (

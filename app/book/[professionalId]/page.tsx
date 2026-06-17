@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { resolvePublicBookingProfile } from '@/lib/actions/bookings'
 import { loadPublicAvailability } from '@/lib/booking/public-load'
+import { toYmdInTimeZone } from '@/lib/booking/date'
 import { PublicBookingForm } from '@/components/public/public-booking-form'
 import { PublicBookingUnavailable } from '@/components/public/public-booking-unavailable'
 
@@ -24,7 +25,7 @@ export default async function BookByProfessionalPage({ params }: BookByProfessio
     return <PublicBookingUnavailable message={resolved.error ?? 'Profissional não encontrado.'} />
   }
 
-  const day = new Date().toISOString().slice(0, 10)
+  const day = toYmdInTimeZone()
   const loaded = await loadPublicAvailability(resolved.profile.slug, day)
 
   if (loaded.error || !loaded.data) {

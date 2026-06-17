@@ -28,6 +28,7 @@ export function BookingsManager({ rows }: { rows: BookingRow[] }) {
       if (r.error) toast.error(r.error)
       else {
         toast.success('Atualizado.')
+        window.dispatchEvent(new Event('hydra:agenda-reload'))
         router.refresh()
       }
     })

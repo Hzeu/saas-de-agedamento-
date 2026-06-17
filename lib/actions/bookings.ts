@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createPublicClient } from '@/lib/supabase/public'
+import { toYmdInTimeZone } from '@/lib/booking/date'
 import type { BookingStatus } from '@/lib/types/database'
 
 export type PublicBookingState = { error?: string; success?: boolean }
@@ -45,6 +46,10 @@ export async function createPublicBooking(
     return { error: error.message || 'Não foi possível agendar.' }
   }
 
+  revalidatePath('/dashboard/reservas')
+  revalidatePath('/dashboard/agenda')
+  revalidatePath(`/${slug}`)
+
   return { success: true }
 }
 
@@ -78,7 +83,7 @@ export async function resolvePublicBookingProfile(
   if (!normalized.includes('/')) {
     const slugCandidate = normalized.toLowerCase()
     const { loadPublicAvailability: loadPublicAvailabilityImpl } = await import('@/lib/booking/public-load')
-    const loaded = await loadPublicAvailabilityImpl(slugCandidate, new Date().toISOString().slice(0, 10))
+    const loaded = await loadPublicAvailabilityImpl(slugCandidate, toYmdInTimeZone())
     if (loaded.data?.profile.slug) {
       return {
         profile: {
@@ -125,7 +130,14 @@ export async function setBookingStatus(
     return { error: error.message || 'Não foi possível atualizar.' }
   }
 
+  const { data: profile } = await supabase.from('profiles').select('slug').eq('id', user.id).maybeSingle()
+
   revalidatePath('/dashboard/reservas')
+  revalidatePath('/dashboard/agenda')
   revalidatePath('/dashboard')
+  if (profile?.slug) {
+    revalidatePath(`/${profile.slug}`)
+  }
+
   return { success: true }
 }

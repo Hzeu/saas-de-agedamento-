@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { APP_NAME } from '@/lib/constants'
 
 const navLinks = [
   { href: '/#features', label: 'Recursos' },
@@ -28,7 +29,7 @@ export function LandingHeader() {
             <div className="flex size-9 items-center justify-center rounded-xl bg-primary">
               <Sparkles className="size-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold">BeautyBook</span>
+            <span className="text-xl font-bold">{APP_NAME}</span>
           </Link>
 
           {/* Desktop Navigation */}

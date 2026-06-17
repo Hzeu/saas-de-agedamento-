@@ -35,6 +35,7 @@ interface NewAppointmentDialogProps {
   services: Pick<Service, 'id' | 'name' | 'duration_minutes' | 'price'>[]
   clients: Pick<Client, 'id' | 'name' | 'phone'>[]
   selectedDate: string
+  onCreated?: () => void
 }
 
 export function NewAppointmentDialog({
@@ -43,6 +44,7 @@ export function NewAppointmentDialog({
   services,
   clients,
   selectedDate,
+  onCreated,
 }: NewAppointmentDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedService, setSelectedService] = useState<string>('')
@@ -60,6 +62,7 @@ export function NewAppointmentDialog({
       } else {
         toast.success('Agendamento criado com sucesso!')
         onOpenChange(false)
+        onCreated?.()
         router.refresh()
       }
     } catch (error) {

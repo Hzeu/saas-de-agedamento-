@@ -113,6 +113,17 @@ export function getInitials(name: string): string {
     .slice(0, 2)
 }
 
+export function getGenderAccentColors(gender?: string | null): { border: string; background: string } {
+  switch (gender?.toLowerCase()) {
+    case 'masculino':
+      return { border: '#3b82f6', background: 'color-mix(in srgb, #3b82f6 15%, transparent)' }
+    case 'feminino':
+      return { border: '#f472b6', background: 'color-mix(in srgb, #f472b6 15%, transparent)' }
+    default:
+      return { border: '#6b7280', background: 'color-mix(in srgb, #6b7280 15%, transparent)' }
+  }
+}
+
 // Calculate available time slots based on working hours and appointments
 export function getAvailableSlots(
   workingHours: { start_time: string; end_time: string },

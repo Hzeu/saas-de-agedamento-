@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { format, addDays, startOfWeek, isSameDay, isToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -15,9 +15,10 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { createClient } from '@/lib/supabase/client'
-import { formatTime, formatCurrency } from '@/lib/helpers'
+import { formatCurrency, formatTime, getGenderAccentColors } from '@/lib/helpers'
+import { addMinutesToHm, timeFromIsoInZone, toYmdInTimeZone } from '@/lib/booking/date'
 import { APPOINTMENT_STATUS, DAYS_OF_WEEK } from '@/lib/constants'
-import type { Appointment, Service, Client, WorkingHours } from '@/lib/types/database'
+import type { Appointment, BookingRow, Service, Client, WorkingHours } from '@/lib/types/database'
 import { cn } from '@/lib/utils'
 import { NewAppointmentDialog } from './new-appointment-dialog'
 
@@ -28,6 +29,18 @@ interface AgendaContentProps {
   workingHours: WorkingHours[]
 }
 
+type AgendaSlotItem = {
+  id: string
+  kind: 'appointment' | 'booking'
+  clientName: string
+  serviceName: string
+  start_time: string
+  end_time: string
+  status: string
+  price?: number
+  gender?: string | null
+}
+
 export function AgendaContent({ 
   professionalId, 
   services, 
@@ -35,34 +48,93 @@ export function AgendaContent({
   workingHours 
 }: AgendaContentProps) {
   const [selectedDate, setSelectedDate] = useState(new Date())
-  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [slotItems, setSlotItems] = useState<AgendaSlotItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
-    async function loadAppointments() {
+    async function loadAgendaItems() {
       setIsLoading(true)
       const dateStr = format(selectedDate, 'yyyy-MM-dd')
-      
-      const { data } = await supabase
+
+      const appointmentsQuery = await supabase
         .from('appointments')
         .select(`
           *,
-          client:clients(name, phone),
+          client:clients(name, phone, gender),
           service:services(name, duration_minutes)
         `)
         .eq('professional_id', professionalId)
         .eq('appointment_date', dateStr)
         .order('start_time', { ascending: true })
 
-      setAppointments(data || [])
+      const appointmentsResult =
+        appointmentsQuery.error &&
+        appointmentsQuery.error.message.toLowerCase().includes('gender')
+          ? await supabase
+              .from('appointments')
+              .select(`
+                *,
+                client:clients(name, phone),
+                service:services(name, duration_minutes)
+              `)
+              .eq('professional_id', professionalId)
+              .eq('appointment_date', dateStr)
+              .order('start_time', { ascending: true })
+          : appointmentsQuery
+
+      const { data: bookings } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('professional_id', professionalId)
+        .neq('status', 'cancelled')
+        .order('date', { ascending: true })
+
+      const appointments = appointmentsResult.data
+
+      const appointmentItems: AgendaSlotItem[] = (appointments ?? []).map((a: Appointment) => ({
+        id: a.id,
+        kind: 'appointment' as const,
+        clientName: a.client?.name || 'Cliente',
+        serviceName: a.service?.name || 'Serviço',
+        start_time: a.start_time.slice(0, 5),
+        end_time: a.end_time.slice(0, 5),
+        status: a.status,
+        price: a.price,
+        gender: a.client?.gender ?? null,
+      }))
+
+      const bookingItems: AgendaSlotItem[] = (bookings ?? [])
+        .filter((b: BookingRow) => toYmdInTimeZone(new Date(b.date)) === dateStr)
+        .map((b: BookingRow) => {
+          const start = timeFromIsoInZone(b.date)
+          return {
+            id: b.id,
+            kind: 'booking' as const,
+            clientName: b.client_name,
+            serviceName: b.service,
+            start_time: start,
+            end_time: addMinutesToHm(start, 60),
+            status: b.status,
+            gender: null,
+          }
+        })
+
+      setSlotItems(
+        [...appointmentItems, ...bookingItems].sort((a, b) => a.start_time.localeCompare(b.start_time)),
+      )
       setIsLoading(false)
     }
 
-    loadAppointments()
-  }, [selectedDate, professionalId])
+    loadAgendaItems()
+
+    const onReload = () => setReloadKey((k) => k + 1)
+    window.addEventListener('hydra:agenda-reload', onReload)
+    return () => window.removeEventListener('hydra:agenda-reload', onReload)
+  }, [selectedDate, professionalId, reloadKey, supabase])
 
   // Get week days
   const weekStart = startOfWeek(selectedDate, { locale: ptBR })
@@ -87,23 +159,10 @@ export function AgendaContent({
     }
   }
 
-  const getAppointmentForSlot = (time: string) => {
-    return appointments.find(a => {
-      const start = a.start_time.slice(0, 5)
-      const end = a.end_time.slice(0, 5)
-      return time >= start && time < end
+  const getItemForSlot = (time: string) => {
+    return slotItems.find((item) => {
+      return time >= item.start_time && time < item.end_time
     })
-  }
-
-  const getStatusColor = (status: Appointment['status']) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-500'
-      case 'confirmed': return 'bg-blue-500'
-      case 'completed': return 'bg-green-500'
-      case 'canceled': return 'bg-red-500'
-      case 'no_show': return 'bg-gray-500'
-      default: return 'bg-gray-500'
-    }
   }
 
   return (
@@ -157,6 +216,7 @@ export function AgendaContent({
           services={services}
           clients={clients}
           selectedDate={format(selectedDate, 'yyyy-MM-dd')}
+          onCreated={() => setReloadKey((k) => k + 1)}
         />
       </div>
 
@@ -196,7 +256,8 @@ export function AgendaContent({
             )}
           </CardTitle>
           <Badge variant="secondary">
-            {appointments.filter(a => a.status !== 'canceled').length} agendamento(s)
+            {slotItems.filter((item) => item.status !== 'canceled' && item.status !== 'cancelled').length}{' '}
+            agendamento(s)
           </Badge>
         </CardHeader>
         <CardContent>
@@ -213,57 +274,54 @@ export function AgendaContent({
             </div>
           ) : (
             <div className="space-y-2">
-              {timeSlots.map((time, index) => {
-                const appointment = getAppointmentForSlot(time)
-                const isSlotStart = appointment?.start_time.slice(0, 5) === time
+              {timeSlots.map((time) => {
+                const item = getItemForSlot(time)
+                const isSlotStart = item?.start_time === time
+                const genderColors = getGenderAccentColors(item?.gender)
 
-                if (appointment && !isSlotStart) return null
+                if (item && !isSlotStart) return null
 
                 return (
                   <div
                     key={time}
                     className={cn(
                       'flex items-stretch gap-4 min-h-[60px]',
-                      !appointment && 'hover:bg-accent/50 rounded-lg cursor-pointer'
+                      !item && 'hover:bg-accent/50 rounded-lg cursor-pointer'
                     )}
-                    onClick={() => !appointment && setIsDialogOpen(true)}
+                    onClick={() => !item && setIsDialogOpen(true)}
                   >
-                    {/* Time */}
                     <div className="w-16 flex-shrink-0 text-sm text-muted-foreground py-2">
                       {time}
                     </div>
 
-                    {/* Slot */}
-                    {appointment ? (
+                    {item ? (
                       <div
                         className={cn(
                           'flex-1 rounded-lg p-3 border-l-4',
-                          appointment.status === 'canceled' ? 'opacity-50' : '',
-                          getStatusColor(appointment.status)
+                          (item.status === 'canceled' || item.status === 'cancelled') && 'opacity-50',
                         )}
                         style={{
-                          backgroundColor: `color-mix(in srgb, ${
-                            appointment.status === 'pending' ? '#eab308' :
-                            appointment.status === 'confirmed' ? '#3b82f6' :
-                            appointment.status === 'completed' ? '#22c55e' :
-                            appointment.status === 'canceled' ? '#ef4444' : '#6b7280'
-                          } 15%, transparent)`,
+                          borderLeftColor: genderColors.border,
+                          backgroundColor: genderColors.background,
                         }}
                       >
                         <div className="flex items-start justify-between">
                           <div>
-                            <p className="font-medium">{appointment.client?.name || 'Cliente'}</p>
+                            <p className="font-medium">{item.clientName}</p>
                             <p className="text-sm text-muted-foreground">
-                              {appointment.service?.name} • {formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}
+                              {item.serviceName} • {formatTime(item.start_time)} - {formatTime(item.end_time)}
+                              {item.kind === 'booking' ? ' • Reserva online' : ''}
                             </p>
                           </div>
                           <div className="text-right">
                             <Badge variant="secondary" className="text-xs capitalize">
-                              {APPOINTMENT_STATUS[appointment.status].label}
+                              {item.kind === 'booking'
+                                ? item.status
+                                : APPOINTMENT_STATUS[item.status as Appointment['status']]?.label ?? item.status}
                             </Badge>
-                            <p className="text-sm font-medium mt-1">
-                              {formatCurrency(appointment.price)}
-                            </p>
+                            {typeof item.price === 'number' ? (
+                              <p className="text-sm font-medium mt-1">{formatCurrency(item.price)}</p>
+                            ) : null}
                           </div>
                         </div>
                       </div>

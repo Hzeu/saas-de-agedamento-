@@ -107,6 +107,7 @@ export interface Client {
   name: string
   email: string | null
   phone: string
+  gender?: string | null
   notes: string | null
   total_appointments: number
   total_spent: number

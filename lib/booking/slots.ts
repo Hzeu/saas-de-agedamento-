@@ -1,3 +1,5 @@
+import { isValidYmd } from '@/lib/booking/date'
+
 export type WorkingHourRow = {
   day_of_week: number
   start_time: string
@@ -18,10 +20,9 @@ function padTime(hm: string): string {
   return `${h.padStart(2, '0')}:${m.padStart(2, '0')}`
 }
 
-/** Dia da semana 0=domingo para data Y-M-D (meio-dia UTC). */
-function weekdayUtc(dayYmd: string): number {
-  const [Y, M, D] = dayYmd.split('-').map((x) => parseInt(x, 10))
-  return new Date(Date.UTC(Y, M - 1, D, 12, 0, 0)).getUTCDay()
+/** Dia da semana 0=domingo para YYYY-MM-DD (meio-dia no fuso BR). */
+function weekdayForDayYmd(dayYmd: string): number {
+  return new Date(`${dayYmd}T12:00:00-03:00`).getUTCDay()
 }
 
 /**
@@ -33,7 +34,9 @@ export function buildHourlySlots(
   occupiedUtcIso: string[],
   stepMinutes = 60,
 ): string[] {
-  const dow = weekdayUtc(dayYmd)
+  if (!isValidYmd(dayYmd)) return []
+
+  const dow = weekdayForDayYmd(dayYmd)
   const rows = (hours?.length ? hours : DEFAULT_HOURS).filter((w) => w.day_of_week === dow)
   if (!rows.length) return []
 

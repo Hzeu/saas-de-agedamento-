@@ -1,4 +1,5 @@
 import { buildHourlySlots, type WorkingHourRow } from '@/lib/booking/slots'
+import { isValidYmd } from '@/lib/booking/date'
 import { createPublicClient } from '@/lib/supabase/public'
 
 export type PublicServiceOption = {
@@ -101,6 +102,7 @@ export async function loadPublicAvailability(
 
   const prof = profileResult.data
   const supabase = createPublicClient()
+  const dayKey = isValidYmd(dayYmd) ? dayYmd : dayYmd.trim()
 
   const services = await loadPublicServices(prof.id)
 
@@ -117,7 +119,7 @@ export async function loadPublicAvailability(
 
   const { data: occ, error: occError } = await supabase.rpc('get_booking_occupied_times', {
     p_id: prof.id,
-    p_day: dayYmd,
+    p_day: dayKey,
   })
   if (occError) {
     console.error('[public-load] get_booking_occupied_times failed', {
@@ -132,7 +134,7 @@ export async function loadPublicAvailability(
   )
 
   const hours = (wh ?? []) as WorkingHourRow[]
-  const slots = buildHourlySlots(dayYmd, hours, occupied)
+  const slots = buildHourlySlots(dayKey, hours, occupied)
 
   return {
     data: {

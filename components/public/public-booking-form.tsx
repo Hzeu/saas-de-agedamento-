@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select'
 import { createPublicBooking, loadPublicAvailability } from '@/lib/actions/bookings'
 import type { AvailabilityResult } from '@/lib/booking/public-load'
+import { toYmdInTimeZone } from '@/lib/booking/date'
 import { formatSlotLabel } from '@/lib/booking/slots'
 import { cn } from '@/lib/utils'
 
@@ -38,7 +39,7 @@ function normalizeAvailability(value: AvailabilityResult | null | undefined): Av
 
 export function PublicBookingForm({ slug, initialDay, initial }: Props) {
   const initialData = useMemo(() => normalizeAvailability(initial), [initial])
-  const minDay = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const minDay = useMemo(() => toYmdInTimeZone(), [])
   const [day, setDay] = useState(initialDay)
   const [data, setData] = useState<AvailabilityResult>(initialData)
   const [serviceId, setServiceId] = useState(initialData.profile.services[0]?.id ?? '')
@@ -55,8 +56,19 @@ export function PublicBookingForm({ slug, initialDay, initial }: Props) {
 
   useEffect(() => {
     if (state.error) toast.error(state.error)
-    if (state.success) toast.success('Agendamento enviado! O profissional irá confirmar.')
-  }, [state.error, state.success])
+    if (state.success) {
+      toast.success('Agendamento enviado! O profissional irá confirmar.')
+      startTransition(async () => {
+        const res = await loadPublicAvailability(slug, day)
+        if (res.data) {
+          const nextData = normalizeAvailability(res.data)
+          setData(nextData)
+          setServiceId(nextData.profile.services[0]?.id ?? '')
+          setSlotIso(nextData.slots[0] ?? '')
+        }
+      })
+    }
+  }, [state.error, state.success, slug, day])
 
   useEffect(() => {
     if (skipFirstFetch.current && day === initialDay) {

@@ -22,8 +22,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'BeautyBook - Agendamento Online para Profissionais de Beleza',
-    template: '%s | BeautyBook',
+    default: 'HYDRA - Agendamento Online para Profissionais de Beleza',
+    template: '%s | HYDRA',
   },
   description: 'Sistema completo de agendamento online para manicures, cabeleireiras, barbeiros, lash designers e profissionais de estética. Gerencie sua agenda, clientes e pagamentos em um só lugar.',
   keywords: [
@@ -38,28 +38,28 @@ export const metadata: Metadata = {
     'agenda online',
     'profissionais de beleza',
   ],
-  authors: [{ name: 'BeautyBook' }],
-  creator: 'BeautyBook',
+  authors: [{ name: 'HYDRA' }],
+  creator: 'HYDRA',
   metadataBase: new URL('https://beautybook.com.br'),
   openGraph: {
     type: 'website',
     locale: 'pt_BR',
     url: 'https://beautybook.com.br',
-    siteName: 'BeautyBook',
-    title: 'BeautyBook - Agendamento Online para Profissionais de Beleza',
+    siteName: 'HYDRA',
+    title: 'HYDRA - Agendamento Online para Profissionais de Beleza',
     description: 'Sistema completo de agendamento online para profissionais de beleza.',
     images: [
       {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'BeautyBook',
+        alt: 'HYDRA',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'BeautyBook - Agendamento Online para Profissionais de Beleza',
+    title: 'HYDRA - Agendamento Online para Profissionais de Beleza',
     description: 'Sistema completo de agendamento online para profissionais de beleza.',
     images: ['/og-image.png'],
   },

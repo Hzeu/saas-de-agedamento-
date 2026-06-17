@@ -1,12 +1,13 @@
 import { notFound } from 'next/navigation'
 import { RESERVED_PUBLIC_SLUGS } from '@/lib/constants'
 import { loadPublicAvailability } from '@/lib/booking/public-load'
+import { toYmdInTimeZone } from '@/lib/booking/date'
 import { PublicBookingForm } from '@/components/public/public-booking-form'
 
 export const dynamic = 'force-dynamic'
 
 function todayYmd() {
-  return new Date().toISOString().slice(0, 10)
+  return toYmdInTimeZone()
 }
 
 export default async function PublicProfessionalPage({
