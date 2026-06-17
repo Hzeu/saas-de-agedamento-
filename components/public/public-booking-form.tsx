@@ -13,11 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  createPublicBooking,
-  loadPublicAvailability,
-  type AvailabilityResult,
-} from '@/lib/actions/bookings'
+import { createPublicBooking, loadPublicAvailability } from '@/lib/actions/bookings'
+import type { AvailabilityResult } from '@/lib/booking/public-load'
 import { formatSlotLabel } from '@/lib/booking/slots'
 import { cn } from '@/lib/utils'
 

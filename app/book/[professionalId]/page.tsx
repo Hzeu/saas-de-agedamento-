@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
-import { loadPublicAvailability, resolvePublicBookingProfile } from '@/lib/actions/bookings'
+import { resolvePublicBookingProfile } from '@/lib/actions/bookings'
+import { loadPublicAvailability } from '@/lib/booking/public-load'
 import { PublicBookingForm } from '@/components/public/public-booking-form'
 import { PublicBookingUnavailable } from '@/components/public/public-booking-unavailable'
 

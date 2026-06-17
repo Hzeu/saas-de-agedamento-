@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { RESERVED_PUBLIC_SLUGS } from '@/lib/constants'
-import { loadPublicAvailability } from '@/lib/actions/bookings'
+import { loadPublicAvailability } from '@/lib/booking/public-load'
 import { PublicBookingForm } from '@/components/public/public-booking-form'
 
 export const dynamic = 'force-dynamic'
@@ -23,7 +23,8 @@ export default async function PublicProfessionalPage({
 
   const day = todayYmd()
   const loaded = await loadPublicAvailability(slug, day)
-  if (loaded.error || !loaded.data) {
+
+  if (loaded.error === 'Perfil não encontrado.' || !loaded.data) {
     notFound()
   }
 
